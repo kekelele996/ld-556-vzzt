@@ -39,5 +39,14 @@ export const useStoryStore = defineStore('stories', () => {
     return stories.value.filter((story) => story.memberId === memberId)
   }
 
-  return { stories, activeCategory, filteredStories, loading, hydrate, persist, saveStory, byMember }
+  async function reassignMember(fromId: string, toId: string) {
+    stories.value = stories.value.map((story) => ({
+      ...story,
+      memberId: story.memberId === fromId ? toId : story.memberId,
+      authorId: story.authorId === fromId ? toId : story.authorId
+    }))
+    await persist()
+  }
+
+  return { stories, activeCategory, filteredStories, loading, hydrate, persist, saveStory, byMember, reassignMember }
 })

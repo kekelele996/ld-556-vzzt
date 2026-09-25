@@ -38,5 +38,14 @@ export const useLegacyStore = defineStore('legacy', () => {
     return plans.value.filter((plan) => plan.memberId === memberId || plan.beneficiaries.includes(memberId))
   }
 
-  return { plans, loading, hydrate, persist, savePlan, changeStatus, byMember }
+  async function reassignMember(fromId: string, toId: string) {
+    plans.value = plans.value.map((plan) => ({
+      ...plan,
+      memberId: plan.memberId === fromId ? toId : plan.memberId,
+      beneficiaries: [...new Set(plan.beneficiaries.map((id) => (id === fromId ? toId : id)))]
+    }))
+    await persist()
+  }
+
+  return { plans, loading, hydrate, persist, savePlan, changeStatus, byMember, reassignMember }
 })

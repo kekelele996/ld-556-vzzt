@@ -34,5 +34,15 @@ export const usePhotoStore = defineStore('photos', () => {
     return photos.value.filter((photo) => photo.memberId === memberId || photo.people.includes(memberId))
   }
 
-  return { photos, restoredPhotos, loading, hydrate, persist, savePhoto, byMember }
+  async function reassignMember(fromId: string, toId: string) {
+    photos.value = photos.value.map((photo) => ({
+      ...photo,
+      memberId: photo.memberId === fromId ? toId : photo.memberId,
+      uploaderId: photo.uploaderId === fromId ? toId : photo.uploaderId,
+      people: [...new Set(photo.people.map((id) => (id === fromId ? toId : id)))]
+    }))
+    await persist()
+  }
+
+  return { photos, restoredPhotos, loading, hydrate, persist, savePhoto, byMember, reassignMember }
 })

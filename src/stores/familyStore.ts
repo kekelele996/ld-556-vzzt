@@ -67,6 +67,32 @@ export const useFamilyStore = defineStore('family', () => {
     await persist()
   }
 
+  function repointIds(ids: string[], fromId: string, toId: string, selfId: string) {
+    return [...new Set(ids.map((id) => (id === fromId ? toId : id)))].filter((id) => id !== selfId)
+  }
+
+  async function applyMerge(primaryId: string, secondaryId: string, mergedProfile: FamilyMember) {
+    members.value = members.value
+      .filter((member) => member.id !== secondaryId)
+      .map((member) => {
+        const repointed: FamilyMember = {
+          ...member,
+          parentId: member.parentId === secondaryId ? primaryId : member.parentId,
+          spouseIds: repointIds(member.spouseIds, secondaryId, primaryId, member.id),
+          childrenIds: repointIds(member.childrenIds, secondaryId, primaryId, member.id)
+        }
+        return member.id === primaryId
+          ? {
+              ...mergedProfile,
+              parentId: mergedProfile.parentId === secondaryId ? '' : mergedProfile.parentId,
+              spouseIds: repointIds(mergedProfile.spouseIds, secondaryId, primaryId, primaryId),
+              childrenIds: repointIds(mergedProfile.childrenIds, secondaryId, primaryId, primaryId)
+            }
+          : repointed
+      })
+    await persist()
+  }
+
   async function removeMember(id: string) {
     const descendantIds = new Set<string>([id])
     let changed = true
@@ -89,5 +115,5 @@ export const useFamilyStore = defineStore('family', () => {
     await persist()
   }
 
-  return { members, loading, tree, memberOptions, hydrate, persist, getById, relations, addMember, updateMember, removeMember }
+  return { members, loading, tree, memberOptions, hydrate, persist, getById, relations, addMember, updateMember, applyMerge, removeMember }
 })

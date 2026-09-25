@@ -327,6 +327,52 @@ a {
   max-width: 520px;
 }
 
+.duplicate-alert {
+  border-radius: 8px;
+}
+
+.duplicate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(122, 94, 55, 0.35);
+}
+
+.merge-modal {
+  max-width: 640px;
+}
+
+.merge-modal h3 {
+  margin: 18px 0 8px;
+  font-size: 15px;
+}
+
+.merge-fill {
+  margin: 4px 0;
+  color: #4d5a51;
+}
+
+.merge-conflict {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #f4ead8;
+  border-radius: 6px;
+}
+
+.merge-conflict p {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.merge-note {
+  margin-top: 14px;
+  color: #7a5e37;
+  font-size: 13px;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .profile-hero {
