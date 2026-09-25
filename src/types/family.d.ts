@@ -17,6 +17,8 @@ export interface FamilyMember {
 
 export interface FamilyTreeNode extends FamilyMember {
   status: MemberStatus
+  /** 是否为疑似重复成员（存在同名的另一份资料） */
+  duplicate?: boolean
   children?: FamilyTreeNode[]
 }
 

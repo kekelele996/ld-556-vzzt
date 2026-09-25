@@ -6,6 +6,7 @@ LegacyTree 是一个纯前端的数字遗产与家谱管理平台，用于构建
 
 - 家谱树：D3.js 渲染交互式树，支持缩放、平移、搜索、居中、全屏、SVG 导出、节点详情抽屉、配偶虚线关系。
 - 成员详情：展示头像、性别、生卒年份、出生地、简介、故事时间线、照片画廊、亲属关系和遗产规划。
+- 疑似重复与合并：导入旧家谱后按归一化姓名识别同名人的多份资料，在成员详情与树节点标出疑似重复；合并前可选定主档，空字段自动补齐，两边都有值且不同的字段逐一手选后才写入；关系、故事、照片人物与遗产受益人统一改指向主档，旧编号清除并持久化。
 - 家族故事：按回忆、成就、趣事、家训分类筛选，可在卡片和时间线视图之间切换。
 - 老照片馆：照片墙、年份时间轴、Canvas 基础修复滤镜、修复前后状态展示。
 - 遗产规划：按遗嘱意向、数字资产、纪念品、信件创建规划，支持草稿、定稿、归档状态流转。
@@ -38,15 +39,15 @@ npm run dev
 ```text
 src/
 ├── stores/        # familyStore.ts, storyStore.ts, photoStore.ts, legacyStore.ts, settingsStore.ts
-├── types/         # family.d.ts, story.d.ts, photo.d.ts, legacy.d.ts, settings.d.ts, import-export.d.ts
+├── types/         # family.d.ts, story.d.ts, photo.d.ts, legacy.d.ts, settings.d.ts, import-export.d.ts, merge.d.ts
 ├── constants/     # enums.ts, default-templates.ts
-├── components/common/  # MemberAvatar, TimelineView, MediaGallery, EmptyState, ConfirmDialog, MessageBridge
+├── components/common/  # MemberAvatar, TimelineView, MediaGallery, EmptyState, ConfirmDialog, MessageBridge, MemberMergeDialog
 ├── components/tree/    # FamilyTreeView, TreeNode, TreeControls
-├── hooks/         # useFamily(), useStory(), usePhoto(), useEncryption()
+├── hooks/         # useFamily(), useStory(), usePhoto(), useEncryption(), useMemberMerge()
 ├── pages/         # FamilyTree, MemberDetail, Stories, Photos, Legacy, Settings
 ├── router/        # index.ts, routes.ts, guards.ts
 ├── db/            # family-db.ts, story-db.ts, photo-db.ts, legacy-db.ts, secure-store.ts, index.ts
-├── utils/         # gedcom-parser.ts, crypto.ts, export.ts, image-filter.ts, member-status.ts, error-handler.ts
+├── utils/         # gedcom-parser.ts, crypto.ts, export.ts, image-filter.ts, member-status.ts, duplicate-detect.ts, merge-preview.ts, relation-remap.ts, error-handler.ts
 └── assets/        # 默认头像、空状态插画、图标
 ```
 
@@ -74,6 +75,16 @@ src/
 - 加密 JSON 导出：需要先设置加密密码，否则 Web Crypto 层会提示密钥未解锁。
 - GEDCOM 导入：`src/utils/gedcom-parser.ts` 支持读取 `INDI`、`NAME`、`SEX`、`BIRT DATE`、`DEAT DATE` 元素并转换为 FamilyMember。
 - GEDCOM 限制：当前版本不解析 `FAM`、`HUSB`、`WIFE`、`CHIL` 家庭关系块，因此导入后父子和配偶关系需要在家谱树中手动补充。
+
+## 疑似重复与成员合并说明
+
+导入旧家谱（GEDCOM / JSON）后，同一个人可能留下姓名相同但日期、籍贯记录不同的两份资料，故事和照片也分开挂着。
+
+- **疑似重复识别**：`src/utils/duplicate-detect.ts` 按归一化姓名（去除全部空白字符）分组，同名记录多于一份即标记为疑似重复。`familyStore` 的 `duplicateGroups` 实时计算，成员详情页顶部告警、姓名旁标签与家谱树节点的橙色圆点都会提示。
+- **合并前选定主档**：`src/components/common/MemberMergeDialog.vue` 中可在两份资料间切换主档，副档将被删除。
+- **字段写入规则**（`src/utils/merge-preview.ts`）：两边一致直接保留；一边为空则从另一份自动补齐；**两边都有值且不同的字段逐行展示，必须手动选择「取主档 / 取另一份」，未全部决定前确认按钮禁用，系统不会悄悄覆盖**。
+- **引用改指向**（`src/utils/relation-remap.ts` 与 `src/hooks/useMemberMerge.ts`）：其他成员的 `parentId`/`spouseIds`/`childrenIds`、故事的 `memberId`/`authorId`、照片的 `memberId`/`people`/`uploaderId`、遗产规划的 `memberId`/`beneficiaries` 全部改指向主档 id，列表引用自动去重；关系字段取两边并集，世代取辈分更高（数字更小）值。
+- **持久化**：四个 store 各自写回 IndexedDB（加密开启时走加密层），旧副档编号在全库中不再残留，重新打开页面、刷新家谱树与成员详情均为合并后的结果；若当前正停留在被删除副档的详情页，会自动跳转到主档。
 
 ## 全局异常处理说明
 

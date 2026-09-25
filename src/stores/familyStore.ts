@@ -2,11 +2,16 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { defaultMembers } from '@/constants/default-templates'
 import type { FamilyMember, FamilyTreeNode, MemberRelationSummary } from '@/types/family'
+import type { DuplicateGroup } from '@/types/merge'
 import { readFamilyMembers, writeFamilyMembers } from '@/db/family-db'
 import { getMemberStatus } from '@/utils/member-status'
+import { buildDuplicateIndex, collectDuplicateIds, findDuplicateGroups } from '@/utils/duplicate-detect'
 
-function buildTree(members: FamilyMember[]): FamilyTreeNode[] {
-  const map = new Map<string, FamilyTreeNode>(members.map((member) => [member.id, { ...member, status: getMemberStatus(member), children: [] }]))
+function buildTree(members: FamilyMember[], duplicateIds: Set<string>): FamilyTreeNode[] {
+  const map = new Map<string, FamilyTreeNode>()
+  for (const member of members) {
+    map.set(member.id, { ...member, status: getMemberStatus(member), duplicate: duplicateIds.has(member.id), children: [] })
+  }
   const roots: FamilyTreeNode[] = []
   for (const node of map.values()) {
     if (node.parentId && map.has(node.parentId)) {
@@ -22,7 +27,12 @@ export const useFamilyStore = defineStore('family', () => {
   const members = ref<FamilyMember[]>([])
   const loading = ref(false)
 
-  const tree = computed(() => buildTree(members.value))
+  /** 疑似重复成员分组（按归一化姓名） */
+  const duplicateGroups = computed<DuplicateGroup[]>(() => findDuplicateGroups(members.value))
+  const duplicateIndex = computed(() => buildDuplicateIndex(duplicateGroups.value))
+  const duplicateIds = computed(() => collectDuplicateIds(duplicateGroups.value))
+
+  const tree = computed(() => buildTree(members.value, duplicateIds.value))
   const memberOptions = computed(() => members.value.map((member) => ({ label: member.name, value: member.id })))
 
   async function hydrate() {
@@ -42,6 +52,11 @@ export const useFamilyStore = defineStore('family', () => {
 
   function getById(id: string) {
     return members.value.find((member) => member.id === id)
+  }
+
+  /** 该成员所在的疑似重复组（若有） */
+  function duplicateGroupOf(id: string): DuplicateGroup | undefined {
+    return duplicateIndex.value.get(id)
   }
 
   function relations(id: string): MemberRelationSummary {
@@ -89,5 +104,20 @@ export const useFamilyStore = defineStore('family', () => {
     await persist()
   }
 
-  return { members, loading, tree, memberOptions, hydrate, persist, getById, relations, addMember, updateMember, removeMember }
+  return {
+    members,
+    loading,
+    tree,
+    memberOptions,
+    duplicateGroups,
+    duplicateIds,
+    hydrate,
+    persist,
+    getById,
+    duplicateGroupOf,
+    relations,
+    addMember,
+    updateMember,
+    removeMember
+  }
 })
